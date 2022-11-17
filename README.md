@@ -6,6 +6,10 @@
 <!-- badges: start -->
 
 [![R-CMD-check](https://github.com/Lizwwwwwww/bis620.2022/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/Lizwwwwwww/bis620.2022/actions/workflows/R-CMD-check.yaml)
+[![Lint
+Result](https://github.com/Lizwwwwwww/bis620.2022/actions/workflows/lint.yaml/badge.svg)](https://github.com/Lizwwwwwww/bis620.2022/actions/workflows/lint.yaml)
+[![Test
+coverage](https://github.com/Lizwwwwwww/bis620.2022/actions/workflows/test-coverage.yaml/badge.svg)](https://github.com/Lizwwwwwww/bis620.2022/actions/workflows/test-coverage.yaml)
 <!-- badges: end -->
 
 The goal of bis620.2022 is to generate time series plot and spectral
@@ -80,9 +84,3 @@ ukb_accel |>
 of `take_log` decides whether the spectral signature is calculated by
 taking the modulus of the Fourier coefficients of the signal, its
 default value is `TRUE`.
-
-[![Code Coverage
-Page](https://github.com/Lizwwwwwww/bis620.2022/actions/workflows/test-coverage.yaml)](https://github.com/Lizwwwwwww/bis620.2022/actions/workflows/test-coverage.yaml)
-
-[![Lint
-Result](https://github.com/Lizwwwwwww/bis620.2022/actions/workflows/lint.yaml)](https://github.com/Lizwwwwwww/bis620.2022/actions/workflows/lint.yaml)

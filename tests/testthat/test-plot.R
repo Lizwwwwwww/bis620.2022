@@ -25,6 +25,17 @@ test_that(
   }
 )
 
+test_that(
+  "The spectral_signature() returns a ggplot object.",
+  {
+    data(ukb_accel)
+    p <- ukb_accel[1:100, ] |>
+      spectral_signature(take_log = FALSE) |>
+      accel_plot()
+    expect_true(inherits(p, "gg"))
+  }
+)
+
 
 test_that(
   "The spectral_signature() is correct for a data.frame with
