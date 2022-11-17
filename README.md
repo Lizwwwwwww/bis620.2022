@@ -10,6 +10,8 @@
 Result](https://github.com/Lizwwwwwww/bis620.2022/actions/workflows/lint.yaml/badge.svg)](https://github.com/Lizwwwwwww/bis620.2022/actions/workflows/lint.yaml)
 [![Test
 coverage](https://github.com/Lizwwwwwww/bis620.2022/actions/workflows/test-coverage.yaml/badge.svg)](https://github.com/Lizwwwwwww/bis620.2022/actions/workflows/test-coverage.yaml)
+[![Codecov test
+coverage](https://codecov.io/gh/Lizwwwwwww/bis620.2022/branch/main/graph/badge.svg)](https://app.codecov.io/gh/Lizwwwwwww/bis620.2022?branch=main)
 <!-- badges: end -->
 
 The goal of bis620.2022 is to generate time series plot and spectral
