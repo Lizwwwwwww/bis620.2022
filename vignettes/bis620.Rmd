@@ -165,7 +165,7 @@ library(broom)
 plotkm_lrt <- function(db, datcol) {
   plot <- autoplot(survfit(Surv(db$DTHDY, db$DTH) ~ datcol),
                    title = names(datcol))
-  lrt_p <- glance(survdiff(Surv(db$DTHDY, db$DTH) ~ datcol))$p.value
+  lrt_p <- broom::glance(survdiff(Surv(db$DTHDY, db$DTH) ~ datcol))$p.value
   return(list(plot, lrt_p))
 }
 ```
