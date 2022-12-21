@@ -28,7 +28,7 @@ In addition, Panitumumab in combination with Folfox is one of the preferred targ
 ## 2. Research Question
 We want to investigate: Does the treatment of Chemotherapy alone or Panitumumab in combination with Chemotherapy have a different impact on patients’ survival time, controlling for the effects of mutant type? We hypothesize that these two treatments will have different impacts on patients’ survival time controlling for the effects of mutant type. 
 
-In our research project, we first do a Cox Proportional Hazards Model on the entire dataset to see the general impacts on how the differences in treatments affect patient survival time. Then, the dataset is divided into two categories based on mutant types “Mutant” and “Wild-Type”. We conducted additional research on these two different datasets and developed two Cox Proportional Hazards Models. 
+In our research project, we first do a Cox Proportional Hazards Model on the entire dataset to see the general impacts on how the differences in treatments affect patient survival time. Then, the dataset is divided into two categories based on mutant types “Mutant” and “Wild-Type”. We conducted additional research on these two different datasets and developed two Cox Proportional Hazards Models with all of the parameters. 
 
 ## 3. Data cleaning and Exploration 
 
@@ -213,6 +213,8 @@ The variables `B_HEIGHT` and `B_WEIGHT` are also being classified into two group
 
 According to the result of Model1, we deleted variable`LIVERMET`,`SEX`,`B_WEIGHT`,`RACE` from our further analysis, as they are both insignificant in both Cox model and Log rank test.
 
+Next, we will analyze whether the treatments will have impacts on patients' survival time controlling for the mutant type. 
+
 #### 4.2.1 Models for Mutant Type
 In our model2, we included all the rest variables and build a model for the patients with `biomarker=="Mutant"`.
 
@@ -251,7 +253,7 @@ model4 = coxph(Surv(db4$DTHDY, db4$DTH)~ ATRT+PRSURG+AGE+B_HEIGHT+DIAGTYPE,data 
 model4
 ```
 
-From model4, we know that only the variable `ATRT`is significant in the model, which means that for people with Wild-type mutant on their RAS gene, the treatment of Panitumumab with Folfox has influence on their survival times.
+From model4, we know that only the variable `ATRT`is significant in the model, which means that for people with Wild-type mutant on their RAS gene, the treatment of Panitumumab has influence on their survival times.
 
 And we get the reduced model(Model5) based on previous findings.
 ```{r}
