@@ -2,3 +2,6 @@
 
 ukb_accel <- readRDS("accel.rds")
 usethis::use_data(ukb_accel, overwrite = TRUE)
+
+dlfinal <- readRDS("dlfinal.rds")
+usethis::use_data(dlfinal, overwrite = TRUE)
