@@ -1,0 +1,280 @@
+---
+title: "Bis620 Final Project"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{bis620}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+**Team member: **Yuchen Chang(yc925), Jia Wei (jw2844)
+
+```{r setup}
+library(bis620.2022)
+```
+## 1. Background and Motivation
+We searched for some statistics related to colorectal cancer, and found that colorectal cancer is the third most diagnosed cancer worldwide. An estimated 1,880,725 people were diagnosed with colorectal cancer in 2020[1], which means investigating in this field is quite necessary.
+We also found that when colorectal cancer is found early, it can often be cured.The 5-year survival rate of people with localized stage colorectal cancer is 91%[1], meaning that the use of treatment is efficient for colorectal cancer.
+In addition, Panitumumab in combination with Folfox is one of the preferred targeted strategies to deal with left-sided RAS wild-type metastatic colorectal cancer. The main members of the RAS gene family includes KRAS, HRAS, and NRAS[2]. The presence of these different mutations may have an impact on treatment decisions. Since KRAS and NRAS gene mutations are more commonly found in certain cancer types, we included KRAS and NRAS mutations in exons 3, 4, and 5 in our studies to compare the survival time of patients with different mutant types in different treatment uses.
+
+
+
+## 2. Research Question
+We want to investigate: Does the treatment of Chemotherapy alone or Panitumumab in combination with Chemotherapy have a different impact on patients’ survival time, controlling for the effects of mutant type? We hypothesize that these two treatments will have different impacts on patients’ survival time controlling for the effects of mutant type. 
+
+In our research project, we first do a Cox Proportional Hazards Model on the entire dataset to see the general impacts on how the differences in treatments affect patient survival time. Then, the dataset is divided into two categories based on mutant types “Mutant” and “Wild-Type”. We conducted additional research on these two different datasets and developed two Cox Proportional Hazards Models. 
+
+## 3. Data cleaning and Exploration 
+
+### 3.1 Read the data and build the dataframe
+```{r}
+
+library(haven)
+library(purrr)
+library(dplyr)
+library(ggplot2)
+library(tidyr)
+
+#setwd("~/Desktop")
+#folfox_path = file.path("620","AllProvidedFiles_309", "PDS_DSA_20050203")
+setwd("C:/魏珈/Yale/22fall/BIS 620/course_files_export/2022-09-01")
+folfox_path = file.path("PDS_DSA_20050203")
+ff_files = dir(folfox_path)
+ff_names = gsub("_pds2019.sas7bdat", "", ff_files)
+
+dl = map(file.path(folfox_path, ff_files), ~ read_sas(.x))
+
+names(dl) = ff_names
+```
+
+Then we take the columns of `SUBJID`, `ATRT`, `PRSURG`, `DTHDY`, `DTH`, `LIVERMET`, `AGE`, `SEX`, `B_WEIGHT`, `B_HEIGHT`, `RACE`, `DIAGTYPE` in the `adsl` table of the original "PDS_DSA_20050203" dataset as our new dataframe for further analysis.
+
+```{r}
+dat = data.frame(dl$adsl$SUBJID,dl$adsl$ATRT,dl$adsl$PRSURG,dl$adsl$DTHDY,dl$adsl$DTH,
+                 dl$adsl$LIVERMET,dl$adsl$AGE,dl$adsl$SEX,dl$adsl$B_WEIGHT,dl$adsl$B_HEIGHT,
+                 dl$adsl$RACE,dl$adsl$DIAGTYPE)
+names(dat) = c("SUBJID","ATRT","PRSURG","DTHDY","DTH","LIVERMET",
+               "AGE","SEX","B_WEIGHT","B_HEIGHT","RACE","DIAGTYPE")
+
+```
+
+### 3.2 Deal with biomarker
+As our study will compare whether the treatment of Chemotherapy alone or Panitumumab in combination with Chemotherapy have a different impact on patients’ with different mutant type for RAS gene, we also include the information from `biomarker` table.
+
+Since KRAS and NRAS mutations are the main members of the RAS family, we will consider both KRAS and NRAS mutations in exons 3, 4, and 5 in our research study.
+
+```{r}
+
+b = dl$biomark |>
+  select(SUBJID, BMMTNM1:BMMTR6, BMMTNM15, BMMTR15, BMMTNM16, BMMTR16) |>
+  pivot_longer(-SUBJID) |>
+  group_by(SUBJID) |>
+  summarize(
+    Mutant = sum(value == "Mutant"),
+    Unknown = sum(value == "" | value == "Failure"),
+    `Wild-type` = sum(value == "Wild-type")
+  )
+
+```
+
+In our new dataframe, a patient is considered "Mutant" if at least one "Mutant" biomarker is found in KRAS or NRAS exons 3, 4, or 5. Patients will be considered "Wild-type" if they are not "Mutant" and they have more "Wild-type" markers than "Unknown" or "Failure" in KRAS or NRAS exons 3, 4, or 5.
+
+```{r}
+get_biomarker = function(x) {
+  if (x[["Mutant"]] > 0) {
+    return("Mutant")
+  }
+  if (x[["Wild-type"]] >  x[['Unknown']]) {
+    return("Wild-type")
+  }
+  return("Unknown")
+}
+
+b$biomarker = map_chr(seq_len(nrow(b)), ~ get_biomarker(b[.x,]))
+
+db = left_join(
+    b |> 
+      filter(biomarker != "Unknown") |>
+      select(SUBJID, biomarker),
+    dat,
+    by = "SUBJID"
+  ) 
+```
+
+### 3.3 Data Visualization
+Then, we will draw some histograms for patients' `biomarker`, `AGE`, `B_Height`, and `B_Weight` to present an general view of the distribution of our data. It seems like the proportion of people died in the Mutant type tumors is more than it in the Wild-type tumors.
+
+```{r fig4,fig.height = 3, fig.width = 4, fig.align = 'center'}
+dbs=db
+dbs |>
+  group_by(biomarker,DTH) |>
+  summarize(n = n(),.groups = 'drop') |>
+  ggplot(aes(biomarker, n,fill=factor(DTH))) +
+    geom_col() +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 360, hjust = 1))
+
+```
+
+We discovered that the distribution for patients’ `AGE` does not follow a normal distribution. It is a left-skewed distribution, implying that more patients in the study are older.The median of the `AGE` data is 62.
+
+```{r fig5,fig.height = 3, fig.width = 8, fig.align = 'center'}
+par(mfrow = c(1, 3))
+hist(db$AGE,main="Distribution of Age",xlab="Age") 
+hist(db$B_WEIGHT,main="Distribution of Weight",xlab="Weight") 
+hist(db$B_HEIGHT,main="Distribution of Height",xlab="Height") 
+```
+
+
+## 4. Analysis and Interpretations
+### 4.1 Full Model
+In order to find out which variables have influence on the survival days of patients, we first build a Cox Proportional-Hazards Model(Model1) to get an overall view of relationships between different variables.
+```{r}
+library(survival)
+library(survminer)
+model1 = coxph(Surv(db$DTHDY, db$DTH)~ biomarker+ATRT+PRSURG+LIVERMET+AGE+SEX+B_WEIGHT
+               +B_HEIGHT+factor(RACE)+DIAGTYPE,data = db)
+model1
+```
+
+At the significance level of $\alpha=0.05$, the p-value of the coefficient of variable `biomarker`,`PRSURGY`,`DIAGTYPE` is largely smaller than $\alpha$, we can say that these variables have significant influence on the survival days of patients.
+
+We can also observe that the p-value of coefficient of variable `AGE`, `B_WEIGHT`, `B_HEIGHT` are close to $\alpha$, we think they might also have influence on the survival days, but the influence is less significant that the variables we mentioned before. The p-value of `ATRT` is not significant.
+
+In addition to analyzing the statistical significance of each coefficient in the model, we also draw Kaplan-Meier curve over each variable as well as conduct Log-rank tests to compare curves with different labels. This process can be realized by the function we built, `plotKM_LRT()`.
+
+As the value of variables`AGE`,`B_HEIGHT`,`B_WEIGHT` are consecutive numbers, we simply split the sample into two groups according to the median of each variable. 
+
+```{r}
+db2 = db
+
+db2$AGE = as.numeric(db2$AGE<median(db2$AGE))
+db2$B_HEIGHT = as.numeric(db2$B_HEIGHT<median(db2$B_HEIGHT,na.rm = T))
+db2$B_WEIGHT = as.numeric(db2$B_WEIGHT<median(db2$B_WEIGHT,na.rm = T))
+```
+
+```{r}
+library(ggfortify)
+library(broom)
+plotKM_LRT <- function(db,datcol){
+  plot<-autoplot(survfit(Surv(db$DTHDY,db$DTH)~datcol),title=names(datcol))
+  lrt_p <- glance(survdiff(Surv(db$DTHDY,db$DTH)~datcol))$p.value
+  return(list(plot,lrt_p))
+}
+```
+
+```{r fig1,fig.height = 8, fig.width = 8, fig.align = 'center'}
+library(patchwork)
+
+res = sapply(db2[,c(2:4,7:13)],plotKM_LRT, db = db2)
+res[[1]] + ggtitle("biomarker") + res[[3]] + ggtitle("ATRT")+
+  res[[5]] + ggtitle("PRSURG") + res[[7]] + ggtitle("LIVERMET") + plot_layout(ncol = 2)
+
+```
+
+```{r fig2,fig.height = 8, fig.width = 8, fig.align = 'center'}
+res[[9]] + ggtitle("AGE") + res[[11]] + ggtitle("SEX")+
+  res[[13]] + ggtitle("B_WEIGHT") + res[[15]] + ggtitle("B_HEIGHT") + plot_layout(ncol = 2)
+```
+
+```{r fig3,fig.height = 4, fig.width = 8, fig.align = 'center'}
+res[[17]] + ggtitle("RACE") + res[[19]] + ggtitle("DIAGTYPE") 
+```
+
+By analyzing the plot, the differences between curves with different labels in plots of `biomarker`, `PRSURG`, `DIAGTYPE` is visible, which provides the same conclusion as the p-value, while that of `AGE` and `B_WEIGHT` is not that obvious. 
+
+The following is the p-value of the Log-Rank Tests carried out on each variables. The null hypothesis is: There's no difference between the survival curve between the two/multiple groups.
+
+```{r echo=FALSE }
+library(knitr)
+plist = t(data.frame(res[2,]))
+colnames(plist) = "p-value"
+kable(plist, format = "simple")
+```
+
+
+From this form, we know that the p-value of `biomarker`, `AGE`, `DIAGTYPE` is less than $\alpha=0.05$, while the p-value of `PRSURG` is slightly greater than $\alpha$, which partially confirmed our previous conclusion. However, the p-value of `ATRT` is still not significant.
+
+In conclusion, we have made a preliminary analysis on the dataset, and found out that variables like `biomarker`, `PRSURG`, `DIAGTYPE`, `AGE` might have influence on the survival time of patients, but what we are interested, the treatment type `ATRT` seems not significant in this preliminary analysis. 
+
+As the significance of `biomarker` is the greatest, we will then split the dataset according to patients' `biomarker`, and make further analysis on each type, and find out whether `ATRT` will be influential when controlling for biomarker type.
+
+### 4.2 Models controlling for the different Mutant types
+
+Based on the above results, we discovered that there is a significant differences for the survival time of patient in different `AGE` groups in the Kaplan-Meier curve, and the p-value for variable `AGE` classified into groups "lower than Median age 62" and "higher than the Median age 62" in the Log-Rank Tests is less than $\alpha=0.05$, we will classify the patients into two age group based on the Median value. 
+
+The variables `B_HEIGHT` and `B_WEIGHT` are also being classified into two groups, but they do not show a great difference in the survival plots and are not significant in the Log-Rank Tests, so we determine not to classify the patients' `B_HEIGHT` and `B_WEIGHT` into two groups in our next model. 
+
+According to the result of Model1, we deleted variable`LIVERMET`,`SEX`,`B_WEIGHT`,`RACE` from our further analysis, as they are both insignificant in both Cox model and Log rank test.
+
+#### 4.2.1 Models for Mutant Type
+In our model2, we included all the rest variables and build a model for the patients with `biomarker=="Mutant"`.
+
+```{r}
+db3 = db
+db3$AGE = as.numeric(db3$AGE<median(db3$AGE))
+db3 = db3|>filter(biomarker=="Mutant")
+model2 = coxph(Surv(db3$DTHDY, db3$DTH)~ ATRT+PRSURG+AGE+B_HEIGHT+DIAGTYPE,data = db3)
+model2
+```
+We can found that only the p-value for the variable `PRSURGY` is smaller than the significance level $\alpha=0.05$. The p-value for left variables `ATRT` `AGE` `B_HEIGHT` and `DIAGTYPE` are all quiet large and not significant, which means they have no impacts to patients' survival time. 
+
+To exclude the insignificant variables in the model2, we build a reduced model (model3) with the only significant variable `PRSURG`.
+ 
+```{r}
+model3 = coxph(Surv(db3$DTHDY, db3$DTH)~ PRSURG,data = db3)
+model3
+```
+The p-value for `PRSURGY` equals to 0.000461 is really small, which means the variable `PRSURGY` will have significant impacts on the survival time for the patients with 'Mutant' type biomarker. The variable `ATRT` we expected to be significant does not actually have impacts on the survival time for patients with "Mutant" type gene.
+
+
+
+#### 4.2.2 Models for Wild Type
+We will then build a model(Model4) for patients with `biomarker="Wild-Type"`.
+
+```{r}
+db4 = filter(db,db$biomarker=="Wild-type")
+db4$AGE = as.numeric(db4$AGE<median(db4$AGE))
+```
+
+Same as what we have done before, we first build a full model(Model4) with all the rest variables, and then find out whether treatment makes difference as well as which variables are most influential on the survival days,then we get the reduced model(Model5).
+
+```{r}
+model4 = coxph(Surv(db4$DTHDY, db4$DTH)~ ATRT+PRSURG+AGE+B_HEIGHT+DIAGTYPE,data = db4)
+
+model4
+```
+
+From model4, we know that only the variable `ATRT`is significant in the model, which means that for people with Wild-type mutant on their RAS gene, the treatment of Panitumumab with Folfox has influence on their survival times.
+
+And we get the reduced model(Model5) based on previous findings.
+```{r}
+model5 = coxph(Surv(db4$DTHDY, db4$DTH)~ ATRT,data = db4)
+
+model5
+```
+
+We can see that the p-value of coefficient significance for `ATRT` is less than $\alpha=0.05$, the p-value of a Likelihood ratio test of Model5 is less than $\alpha=0.05$, while that of Model4, which is 0.05463, is not significant.
+
+As a result, for patients with Wild-type mutant, we think the type of treatment have the most significant influence on their survival time.
+
+
+## 5. Conclusions
+In conclusion, treatment of Chemotherapy alone or Panitumumab in combination with Chemotherapy have a different impact on patients’ survival time when controlling for their mutant type. 
+
+As for patients with Mutant type, it is whether the patients received prior surgery or not that influence their survival time. 
+
+As for patients with Wild type, it is the treatment type that has the most significant influence on their survival time. 
+
+Comparing with the result on gov, our primary analysis gets the same result. The result on the gov shows that different treatments will have impacts on patients progression-free survival with Wild-type genes, and have no impacts on patients with Mutant type genes. This study further confirms the efficacy of the treatment panitumumab-FOLFOX in treating the patients with Wild-type KRAS and NRAS.   
+
+## References
+[1]	“Colorectal Cancer - Statistics,” Cancer.Net, Jun. 25, 2012. https://www.cancer.net/cancer-types/colorectal-cancer/statistics (accessed Dec. 07, 2022).
+
+[2]	“Panitumumab Combined With FOLFOX Emerges As the New First-Line PARADIGM for Left-Sided <em>RAS</em> Wild-Type Metastatic Colorectal Cancer,” ASCO Daily News. https://dailynews.ascopubs.org/do/10.1200/ADN.22.201008/full (accessed Dec. 07, 2022).
