@@ -3,7 +3,7 @@ title: "bis620"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{bis620}
-  %\VignetteEngine{rmarkdown::render}
+  %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
@@ -40,18 +40,19 @@ library(dplyr)
 library(ggplot2)
 library(tidyr)
 
-dlfinal <- readRDS("../data-raw/dlfinal.rds")
+load("../data/dlfinal.rda", verbose = TRUE)
+#dlfinal <- data("dlfinal")
 dl <- dlfinal
 ```
 
 Then we take the columns of `SUBJID`, `ATRT`, `PRSURG`, `DTHDY`, `DTH`, `LIVERMET`, `AGE`, `SEX`, `B_WEIGHT`, `B_HEIGHT`, `RACE`, `DIAGTYPE` in the `adsl` table of the original "PDS_DSA_20050203" dataset as our new dataframe for further analysis.
 
 ```{r}
-dat <- data.frame(dl$adsl$SUBJID, dl$adsl$ATRT,
-                  dl$adsl$PRSURG, dl$adsl$DTHDY, dl$adsl$DTH,
-                  dl$adsl$LIVERMET, dl$adsl$AGE, dl$adsl$SEX,
-                  dl$adsl$B_WEIGHT, dl$adsl$B_HEIGHT,
-                  dl$adsl$RACE, dl$adsl$DIAGTYPE)
+dat <- data.frame(dl[["adsl"]][["SUBJID"]], dl[["adsl"]][["ATRT"]],
+                  dl[["adsl"]][["PRSURG"]], dl[["adsl"]][["DTHDY"]], dl[["adsl"]][["DTH"]],
+                  dl[["adsl"]][["LIVERMET"]], dl[["adsl"]][["AGE"]], dl[["adsl"]][["SEX"]],
+                  dl[["adsl"]][["B_WEIGHT"]], dl[["adsl"]][["B_HEIGHT"]],
+                  dl[["adsl"]][["RACE"]], dl[["adsl"]][["DIAGTYPE"]])
 names(dat) <- c("SUBJID", "ATRT", "PRSURG", "DTHDY", "DTH", "LIVERMET",
                "AGE", "SEX", "B_WEIGHT", "B_HEIGHT", "RACE", "DIAGTYPE")
 ```
@@ -63,7 +64,7 @@ Since KRAS and NRAS mutations are the main members of the RAS family, we will co
 
 ```{r}
 
-b <- dl$biomark |>
+b <- dl[["biomark"]] |>
   select(SUBJID, BMMTNM1:BMMTR6, BMMTNM15, BMMTR15, BMMTNM16, BMMTR16) |>
   pivot_longer(-SUBJID) |>
   group_by(SUBJID) |>
@@ -118,9 +119,9 @@ We discovered that the distribution for patients’ `AGE` does not follow a norm
 
 ```{r fig5,fig.height = 3, fig.width = 8, fig.align = 'center'}
 par(mfrow = c(1, 3))
-hist(db$AGE, main = "Distribution of Age", xlab = "Age")
-hist(db$B_WEIGHT, main = "Distribution of Weight", xlab = "Weight")
-hist(db$B_HEIGHT, main = "Distribution of Height", xlab = "Height")
+hist(db[["AGE"]], main = "Distribution of Age", xlab = "Age")
+hist(db[["B_WEIGHT"]], main = "Distribution of Weight", xlab = "Weight")
+hist(db[["B_HEIGHT"]], main = "Distribution of Height", xlab = "Height")
 ```
 
 
@@ -130,7 +131,7 @@ In order to find out which variables have influence on the survival days of pati
 ```{r}
 library(survival)
 library(survminer)
-model1 <- coxph(Surv(db$DTHDY, db$DTH) ~  biomarker + ATRT +
+model1 <- coxph(Surv(db[["DTHDY"]], db[["DTH"]]) ~  biomarker + ATRT +
                   PRSURG + LIVERMET + AGE + SEX + B_WEIGHT +
                   B_HEIGHT + factor(RACE) + DIAGTYPE, data = db)
 model1
@@ -147,9 +148,9 @@ As the value of variables`AGE`,`B_HEIGHT`,`B_WEIGHT` are consecutive numbers, we
 ```{r}
 db2 <- db
 
-db2$AGE <- as.numeric(db2$AGE < median(db2$AGE))
-db2$B_HEIGHT <- as.numeric(db2$B_HEIGHT < median(db2$B_HEIGHT, na.rm = TRUE))
-db2$B_WEIGHT <- as.numeric(db2$B_WEIGHT < median(db2$B_WEIGHT, na.rm = TRUE))
+db2[["AGE"]] <- as.numeric(db2[["AGE"]] < median(db2[["AGE"]]))
+db2[["B_HEIGHT"]] <- as.numeric(db2[["B_HEIGHT"]] < median(db2[["B_HEIGHT"]], na.rm = TRUE))
+db2[["B_WEIGHT"]] <- as.numeric(db2[["B_WEIGHT"]] < median(db2[["B_WEIGHT"]], na.rm = TRUE))
 ```
 
 ```{r}
@@ -215,9 +216,9 @@ In our model2, we included all the rest variables and build a model for the pati
 
 ```{r}
 db3 <- db
-db3$AGE <- as.numeric(db3$AGE < median(db3$AGE))
+db3[["AGE"]] <- as.numeric(db3[["AGE"]] < median(db3[["AGE"]]))
 db3 <- db3 |> filter(biomarker == "Mutant")
-model2 <- coxph(Surv(db3$DTHDY, db3$DTH) ~  ATRT +
+model2 <- coxph(Surv(db3[["DTHDY"]], db3[["DTH"]]) ~  ATRT +
                   PRSURG + AGE + B_HEIGHT + DIAGTYPE, data = db3)
 model2
 ```
@@ -226,7 +227,7 @@ We can found that only the p-value for the variable `PRSURGY` is smaller than th
 To exclude the insignificant variables in the model2, we build a reduced model (model3) with the only significant variable `PRSURG`.
  
 ```{r}
-model3 <- coxph(Surv(db3$DTHDY, db3$DTH) ~ PRSURG, data = db3)
+model3 <- coxph(Surv(db3[["DTHDY"]], db3[["DTH"]]) ~ PRSURG, data = db3)
 model3
 ```
 The p-value for `PRSURGY` equals to 0.000461 is really small, which means the variable `PRSURGY` will have significant impacts on the survival time for the patients with 'Mutant' type biomarker. The variable `ATRT` we expected to be significant does not actually have impacts on the survival time for patients with "Mutant" type gene.
@@ -237,14 +238,14 @@ The p-value for `PRSURGY` equals to 0.000461 is really small, which means the va
 We will then build a model(Model4) for patients with `biomarker="Wild-Type"`.
 
 ```{r}
-db4 <- filter(db, db$biomarker == "Wild-type")
-db4$AGE <- as.numeric(db4$AGE < median(db4$AGE))
+db4 <- filter(db, db[["biomarker"]] == "Wild-type")
+db4[["AGE"]] = as.numeric(db4[["AGE"]]<median(db4[["AGE"]]))
 ```
 
 Same as what we have done before, we first build a full model(Model4) with all the rest variables, and then find out whether treatment makes difference as well as which variables are most influential on the survival days,then we get the reduced model(Model5).
 
 ```{r}
-model4 <- coxph(Surv(db4$DTHDY, db4$DTH) ~ ATRT + PRSURG +
+model4 <- coxph(Surv(db4[["DTHDY"]], db4[["DTH"]]) ~ ATRT + PRSURG +
                   AGE + B_HEIGHT + DIAGTYPE, data = db4)
 
 model4
@@ -254,7 +255,7 @@ From model4, we know that only the variable `ATRT`is significant in the model, w
 
 And we get the reduced model(Model5) based on previous findings.
 ```{r}
-model5 <- coxph(Surv(db4$DTHDY, db4$DTH) ~ ATRT, data = db4)
+model5 = coxph(Surv(db4[["DTHDY"]], db4[["DTH"]])~ ATRT,data = db4)
 
 model5
 ```
