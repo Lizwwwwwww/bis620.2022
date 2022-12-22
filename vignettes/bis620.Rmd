@@ -3,7 +3,7 @@ title: "bis620"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{bis620}
-  %\VignetteEngine{knitr::knitr}
+  %\VignetteEngine{rmarkdown::render}
   %\VignetteEncoding{UTF-8}
 ---
 
