@@ -41,18 +41,24 @@ library(ggplot2)
 library(tidyr)
 
 load("../data/dlfinal.rda", verbose = TRUE)
-#dlfinal <- data("dlfinal")
 dl <- dlfinal
 ```
 
 Then we take the columns of `SUBJID`, `ATRT`, `PRSURG`, `DTHDY`, `DTH`, `LIVERMET`, `AGE`, `SEX`, `B_WEIGHT`, `B_HEIGHT`, `RACE`, `DIAGTYPE` in the `adsl` table of the original "PDS_DSA_20050203" dataset as our new dataframe for further analysis.
 
 ```{r}
-dat <- data.frame(dl[["adsl"]][["SUBJID"]], dl[["adsl"]][["ATRT"]],
-                  dl[["adsl"]][["PRSURG"]], dl[["adsl"]][["DTHDY"]], dl[["adsl"]][["DTH"]],
-                  dl[["adsl"]][["LIVERMET"]], dl[["adsl"]][["AGE"]], dl[["adsl"]][["SEX"]],
-                  dl[["adsl"]][["B_WEIGHT"]], dl[["adsl"]][["B_HEIGHT"]],
-                  dl[["adsl"]][["RACE"]], dl[["adsl"]][["DIAGTYPE"]])
+dat <- data.frame(dl[["adsl"]][["SUBJID"]],
+                  dl[["adsl"]][["ATRT"]],
+                  dl[["adsl"]][["PRSURG"]],
+                  dl[["adsl"]][["DTHDY"]],
+                  dl[["adsl"]][["DTH"]],
+                  dl[["adsl"]][["LIVERMET"]],
+                  dl[["adsl"]][["AGE"]],
+                  dl[["adsl"]][["SEX"]],
+                  dl[["adsl"]][["B_WEIGHT"]],
+                  dl[["adsl"]][["B_HEIGHT"]],
+                  dl[["adsl"]][["RACE"]],
+                  dl[["adsl"]][["DIAGTYPE"]])
 names(dat) <- c("SUBJID", "ATRT", "PRSURG", "DTHDY", "DTH", "LIVERMET",
                "AGE", "SEX", "B_WEIGHT", "B_HEIGHT", "RACE", "DIAGTYPE")
 ```
@@ -149,8 +155,10 @@ As the value of variables`AGE`,`B_HEIGHT`,`B_WEIGHT` are consecutive numbers, we
 db2 <- db
 
 db2[["AGE"]] <- as.numeric(db2[["AGE"]] < median(db2[["AGE"]]))
-db2[["B_HEIGHT"]] <- as.numeric(db2[["B_HEIGHT"]] < median(db2[["B_HEIGHT"]], na.rm = TRUE))
-db2[["B_WEIGHT"]] <- as.numeric(db2[["B_WEIGHT"]] < median(db2[["B_WEIGHT"]], na.rm = TRUE))
+db2[["B_HEIGHT"]] <- as.numeric(db2[["B_HEIGHT"]] <
+                                  median(db2[["B_HEIGHT"]], na.rm = TRUE))
+db2[["B_WEIGHT"]] <- as.numeric(db2[["B_WEIGHT"]] <
+                                  median(db2[["B_WEIGHT"]], na.rm = TRUE))
 ```
 
 ```{r}
@@ -239,7 +247,7 @@ We will then build a model(Model4) for patients with `biomarker="Wild-Type"`.
 
 ```{r}
 db4 <- filter(db, db[["biomarker"]] == "Wild-type")
-db4[["AGE"]] = as.numeric(db4[["AGE"]]<median(db4[["AGE"]]))
+db4[["AGE"]] <- as.numeric(db4[["AGE"]] < median(db4[["AGE"]]))
 ```
 
 Same as what we have done before, we first build a full model(Model4) with all the rest variables, and then find out whether treatment makes difference as well as which variables are most influential on the survival days,then we get the reduced model(Model5).
@@ -255,7 +263,7 @@ From model4, we know that only the variable `ATRT`is significant in the model, w
 
 And we get the reduced model(Model5) based on previous findings.
 ```{r}
-model5 = coxph(Surv(db4[["DTHDY"]], db4[["DTH"]])~ ATRT,data = db4)
+model5 <- coxph(Surv(db4[["DTHDY"]], db4[["DTH"]]) ~ ATRT, data = db4)
 
 model5
 ```
