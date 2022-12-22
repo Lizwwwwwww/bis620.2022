@@ -1,5 +1,5 @@
 ---
-title: "Bis620 Final Project"
+title: "bis620"
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{bis620}
